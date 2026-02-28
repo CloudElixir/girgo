@@ -69,6 +69,6 @@ class DefaultFirebaseOptions {
     messagingSenderId: '220181038206',
     projectId: 'girgo-prod',
     storageBucket: 'girgo-prod.firebasestorage.app',
-    iosBundleId: 'com.example.girgoFlutter',
+    iosBundleId: 'com.anamaya.girgo',
   );
 }
