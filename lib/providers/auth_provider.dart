@@ -53,6 +53,26 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  Future<void> signInWithApple() async {
+    try {
+      final userCredential = await _authService.signInWithApple();
+      _user = userCredential?.user;
+      
+      // For platforms that support Apple Sign-In
+      if (_user == null) {
+        final prefs = await SharedPreferences.getInstance();
+        final userId = prefs.getString('user');
+        _isAuthenticated = userId != null && userId.isNotEmpty;
+      } else {
+        _isAuthenticated = true;
+      }
+      
+      notifyListeners();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   // Method to handle guest login (for Linux)
   Future<void> signInAsGuest() async {
     final prefs = await SharedPreferences.getInstance();

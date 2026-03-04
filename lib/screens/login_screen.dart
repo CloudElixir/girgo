@@ -140,17 +140,19 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _handleAppleSignIn() async {
     try {
-      // Apple Sign-In would be implemented here
-      // For now, show a message that it's coming soon
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      await authProvider.signInWithApple();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Apple Sign-In coming soon')),
-        );
+        Navigator.of(context).pushReplacementNamed('/home');
       }
     } catch (e) {
       if (mounted) {
+        String errorMessage = 'Apple sign in failed: $e';
+        if (e.toString().contains('only available on iOS')) {
+          errorMessage = 'Apple Sign-In is only available on iOS and macOS. Please use Google Sign-In or Email.';
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Apple sign in failed: $e')),
+          SnackBar(content: Text(errorMessage)),
         );
       }
     }
@@ -556,7 +558,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ],
                             ),
                             SizedBox(height: _getResponsiveSpacing(context, AppSpacing.lg)),
-                            // Social sign-in options (G and M buttons)
+                            // Social sign-in options (G and A buttons)
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -571,8 +573,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 ),
                                 _buildSocialCircleButton(
-                                  label: 'M',
-                                  onTap: _handleGmailSignIn,
+                                  label: 'A',
+                                  onTap: _handleAppleSignIn,
                                 ),
                               ],
                             ),

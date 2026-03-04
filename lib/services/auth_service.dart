@@ -1,5 +1,7 @@
+import 'dart:io' as io;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_service.dart';
 import 'firestore_service.dart';
@@ -250,6 +252,77 @@ class AuthService {
       throw Exception('Password reset requires Firebase support.');
     }
     await FirebaseService.auth!.sendPasswordResetEmail(email: email);
+  }
+
+  /// Sign in with Apple (iOS/macOS only)
+  Future<UserCredential?> signInWithApple() async {
+    try {
+      if (FirebaseService.auth == null) {
+        throw Exception('Apple Sign-In requires Firebase support.');
+      }
+
+      // Check platform - Apple Sign-In only works on iOS and macOS
+      if (!io.Platform.isIOS && !io.Platform.isMacOS) {
+        throw Exception('Apple Sign-In is only available on iOS and macOS.');
+      }
+
+      final appleCredential = await SignInWithApple.getAppleIDCredential(
+        scopes: [],
+      );
+
+      final oauthCredential = OAuthProvider('apple.com').credential(
+        idToken: appleCredential.identityToken,
+        accessToken: appleCredential.authorizationCode,
+      );
+
+      final userCredential = await FirebaseService.auth!.signInWithCredential(oauthCredential);
+
+      if (userCredential.user != null) {
+        final user = userCredential.user!;
+        
+        // Get full name from Apple credential
+        String displayName = '';
+        if (appleCredential.givenName != null || appleCredential.familyName != null) {
+          displayName = '${appleCredential.givenName ?? ''} ${appleCredential.familyName ?? ''}'.trim();
+        }
+
+        // Update display name if we got it from Apple
+        if (displayName.isNotEmpty && user.displayName != displayName) {
+          await user.updateDisplayName(displayName);
+          await user.reload();
+        }
+
+        // Store in SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('user', user.uid);
+        await prefs.setString('userEmail', user.email ?? '');
+        if (displayName.isNotEmpty) {
+          await prefs.setString('userName', displayName);
+        }
+        if (user.photoURL != null) {
+          await prefs.setString('userPhoto', user.photoURL!);
+        }
+
+        // Create or update user in Firestore
+        try {
+          await FirestoreService.createOrUpdateUser(
+            uid: user.uid,
+            email: user.email ?? '',
+            name: displayName.isNotEmpty ? displayName : user.displayName,
+            photoURL: user.photoURL,
+          );
+          print('✅ User created/updated in Firestore via Apple Sign-In');
+        } catch (e) {
+          print('⚠️ Failed to create user in Firestore: $e');
+          // Don't fail sign-in if Firestore update fails
+        }
+      }
+
+      return userCredential;
+    } catch (e) {
+      print('Apple Sign-In Error: $e');
+      rethrow;
+    }
   }
 }
 
