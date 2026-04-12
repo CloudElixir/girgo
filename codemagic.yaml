@@ -2,12 +2,13 @@
 # In Codemagic: add Apple Developer / App Store Connect integration,
 # enable iOS code signing (distribution certificate + App Store profile for com.anamaya.girgo).
 
+project: girgo_flutter
+
 workflows:
   default:
     name: iOS App Store
     max_build_duration: 120
     instance_type: mac_mini_m2
-    project_root: girgo_flutter
     environment:
       flutter: stable
       xcode: latest
@@ -16,26 +17,32 @@ workflows:
         distribution_type: app_store
         bundle_identifier: com.anamaya.girgo
     scripts:
+      - name: Change to project directory
+        script: |
+          set -e
+          cd girgo_flutter
       - name: Install dependencies
         script: |
           set -e
+          cd girgo_flutter
           flutter pub get
       - name: CocoaPods (if Podfile present)
         script: |
           set -e
-          cd ios
+          cd girgo_flutter/ios
           if [ -f Podfile ]; then pod install; fi
       - name: Apply iOS code signing
         script: |
           set -e
-          cd ios
+          cd girgo_flutter/ios
           xcode-project use-profiles
       - name: Build IPA
         script: |
           set -e
+          cd girgo_flutter
           flutter build ipa --release
     artifacts:
-      - build/ios/ipa/*.ipa
+      - girgo_flutter/build/ios/ipa/*.ipa
     publishing:
       app_store_connect:
         # Configure the "App Store Connect" integration in Codemagic team settings.
