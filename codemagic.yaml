@@ -7,11 +7,19 @@ workflows:
     environment:
       flutter: stable
       xcode: latest
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.anamaya.girgo
     scripts:
       - name: Install dependencies
         script: |
           set -e
           flutter pub get
+      - name: Set up code signing settings on Xcode project
+        script: |
+          set -e
+          cd ios
+          xcode-project use-profiles
       - name: Build IPA
         script: |
           set -e
