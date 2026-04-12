@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "220181038206",
+    "project_id": "girgo-prod",
+    "storage_bucket": "girgo-prod.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:220181038206:android:6b11ed3a7101cf7b4a042f",
+        "android_client_info": {
+          "package_name": "com.girgo.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "220181038206-8bh4ncqfmh69cidtjg1lcqhnklauj0rp.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.girgo.app",
+            "certificate_hash": "a173d56242ce74186c745d29445c1a1fb7b2d147"
+          }
+        },
+        {
+          "client_id": "220181038206-gibo2r5qfsp33u3ec9qdb5lb5hn08mrv.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.girgo.app",
+            "certificate_hash": "22112f0554804cb2f4f79e342571f732bc6dcb57"
+          }
+        },
+        {
+          "client_id": "220181038206-01h7sld5sb34d47ce5nc00ud84rnemmq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCg00uGiR3KeQVXVX9znpZHw9FS1kX401U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "220181038206-01h7sld5sb34d47ce5nc00ud84rnemmq.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
