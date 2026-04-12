@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="A new Flutter project.">
+  
+  <!-- Google Sign-In Client ID -->
+  <meta name="google-signin-client_id" content="220181038206-01h7sld5sb34d47ce5nc00ud84rnemmq.apps.googleusercontent.com">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="girgo_admin">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>girgo_admin</title>
+  <link rel="manifest" href="manifest.json">
+  
+  <!-- Firebase Auth SDK for direct Google Sign-In (using compat SDK) -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script>
+    // Firebase config (same as Flutter's firebase_options.dart)
+    const firebaseConfig = {
+      apiKey: 'AIzaSyBO2RF75GZSu2seT3HXayQErd79ek1r16A',
+      authDomain: 'girgo-prod.firebaseapp.com',
+      projectId: 'girgo-prod',
+      storageBucket: 'girgo-prod.firebasestorage.app',
+      messagingSenderId: '220181038206',
+      appId: '1:220181038206:web:f5586bf78ee227ee4a042f'
+    };
+    
+    // Initialize Firebase if not already initialized by Flutter
+    let firebaseApp;
+    if (window.firebase && window.firebase.apps && window.firebase.apps.length > 0) {
+      // Use Flutter's Firebase instance
+      firebaseApp = window.firebase.apps[0];
+      console.log('✅ Using Flutter\'s Firebase instance');
+    } else {
+      // Initialize our own Firebase instance
+      firebaseApp = window.firebase.initializeApp(firebaseConfig);
+      console.log('✅ Initialized Firebase for sign-in');
+    }
+    
+    // Make signInWithGooglePopup available globally
+    // Wrap in Promise to ensure it's a proper Promise object
+    window.signInWithGooglePopup = function() {
+      return new Promise(async (resolve, reject) => {
+        try {
+          const auth = window.firebase.auth(firebaseApp);
+          
+          const provider = new window.firebase.auth.GoogleAuthProvider();
+          provider.addScope('email');
+          provider.addScope('profile');
+          provider.addScope('openid');
+          // Force consent screen to show (always show account picker)
+          provider.setCustomParameters({
+            prompt: 'select_account'
+          });
+          
+          console.log('🔐 Starting Google Sign-In popup...');
+          const result = await auth.signInWithPopup(provider);
+          console.log('✅ Sign-in popup completed');
+          
+          // Get ID token from the user
+          console.log('📋 Getting ID token...');
+          const idToken = await result.user.getIdToken();
+          console.log('✅ ID token obtained');
+          
+          // Access token is in the credential
+          const accessToken = result.credential?.accessToken;
+          console.log('📋 Access token:', accessToken ? '✓ Present' : '✗ Missing');
+          
+          resolve({
+            user: {
+              uid: result.user.uid,
+              email: result.user.email,
+              displayName: result.user.displayName,
+              photoURL: result.user.photoURL
+            },
+            credential: {
+              idToken: idToken,
+              accessToken: accessToken
+            }
+          });
+        } catch (error) {
+          console.error('Google Sign-In error:', error);
+          reject(error);
+        }
+      });
+    };
+    
+    // Mark as ready
+    window.firebaseAuthReady = true;
+    console.log('✅ signInWithGooglePopup function loaded');
+  </script>
+  <script>
+    // Fallback: ensure function exists (even if module hasn't loaded yet)
+    if (!window.signInWithGooglePopup) {
+      window.signInWithGooglePopup = function() {
+        return Promise.reject(new Error('Firebase Auth SDK is still loading. Please wait a moment and try again.'));
+      };
+    }
+  </script>
+</head>
+<body>
+  <script>
+    (function () {
+      var h = location.hostname;
+      if (h !== 'localhost' && h !== '127.0.0.1') return;
+      if (!('serviceWorker' in navigator)) return;
+      var k = 'girgo_admin_sw_cleared_v4';
+      if (sessionStorage.getItem(k)) return;
+      sessionStorage.setItem(k, '1');
+      navigator.serviceWorker.getRegistrations().then(function (regs) {
+        return Promise.all(regs.map(function (r) { return r.unregister(); }));
+      }).then(function () {
+        if ('caches' in window) {
+          return caches.keys().then(function (names) {
+            return Promise.all(names.map(function (n) { return caches.delete(n); }));
+          });
+        }
+      }).then(function () { location.reload(); });
+    })();
+  </script>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>
