@@ -697,6 +697,7 @@ class FirestoreService {
     String? phone,
   }) async {
     try {
+      final normalizedPhone = phone?.trim();
       final userData = <String, dynamic>{
         'email': email,
         'updatedAt': FieldValue.serverTimestamp(),
@@ -708,9 +709,11 @@ class FirestoreService {
       if (photoURL != null && photoURL.isNotEmpty) {
         userData['photoURL'] = photoURL;
       }
-      if (phone != null && phone.isNotEmpty) {
-        userData['phone'] = phone;
-      }
+      // Always persist an explicit phone value:
+      // - empty/missing => null
+      // - provided => trimmed string
+      userData['phone'] =
+          (normalizedPhone == null || normalizedPhone.isEmpty) ? null : normalizedPhone;
       
       // Check if user already exists
       final userDoc = await usersCollection.doc(uid).get();

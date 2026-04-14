@@ -118,7 +118,7 @@ class AuthService {
         if (name != null) {
           await prefs.setString('userName', name);
         }
-        if (phone != null) {
+        if (phone != null && phone.trim().isNotEmpty) {
           await prefs.setString('userMobile', phone);
         }
         return null; // No Firebase credential on Linux
@@ -146,8 +146,10 @@ class AuthService {
         if (name != null) {
           await prefs.setString('userName', name);
         }
-        if (phone != null) {
+        if (phone != null && phone.trim().isNotEmpty) {
           await prefs.setString('userMobile', phone);
+        } else {
+          await prefs.remove('userMobile');
         }
 
         // Create or update user in Firestore
@@ -192,10 +194,26 @@ class AuthService {
       }
 
       // Sign in with Firebase Auth
-      final userCredential = await FirebaseService.auth!.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+      UserCredential userCredential;
+      try {
+        userCredential = await FirebaseService.auth!.signInWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+      } on FirebaseAuthException catch (e) {
+        final normalizedEmail = email.trim().toLowerCase();
+        final isDemo = normalizedEmail == 'demo@girgo.in';
+
+        // Fallback: if demo user is missing, auto-create it.
+        if (isDemo && e.code == 'user-not-found') {
+          userCredential = await FirebaseService.auth!.createUserWithEmailAndPassword(
+            email: email.trim(),
+            password: password,
+          );
+        } else {
+          rethrow;
+        }
+      }
 
       if (userCredential.user != null) {
         final user = userCredential.user!;
@@ -224,6 +242,10 @@ class AuthService {
       }
 
       return userCredential;
+    } on FirebaseAuthException catch (e) {
+      print('Email Sign-In Error: $e');
+      // Re-throw with the original code so UI can map it reliably.
+      rethrow;
     } catch (e) {
       print('Email Sign-In Error: $e');
       rethrow;
@@ -402,6 +424,9 @@ class AuthService {
       }
 
       return userCredential;
+    } on FirebaseAuthException catch (e) {
+      print('Apple Sign-In Error: $e');
+      rethrow;
     } catch (e) {
       print('Apple Sign-In Error: $e');
       rethrow;

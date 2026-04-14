@@ -262,17 +262,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       controller: _mobileController,
                       keyboardType: TextInputType.phone,
                       decoration: InputDecoration(
-                        labelText: 'Mobile Number',
+                        labelText: 'Mobile Number (Optional)',
                         prefixIcon: const Icon(Icons.phone),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(AppBorderRadius.medium),
                         ),
                       ),
                       validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your mobile number';
-                        }
-                        if (value.length < 10) {
+                        final v = (value ?? '').trim();
+                        if (v.isEmpty) return null;
+                        if (v.length < 10) {
                           return 'Please enter a valid mobile number';
                         }
                         return null;

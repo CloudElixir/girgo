@@ -46,6 +46,15 @@ class AuthProvider with ChangeNotifier {
         _isAuthenticated = true;
       }
       
+      // Mark "just logged in" so UI can show non-blocking prompts.
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final uid = prefs.getString('user') ?? _user?.uid;
+        if (uid != null && uid.isNotEmpty) {
+          await prefs.setString('justLoggedInUid', uid);
+        }
+      } catch (_) {}
+
       notifyListeners();
     } catch (e) {
       rethrow;
@@ -66,6 +75,15 @@ class AuthProvider with ChangeNotifier {
         _isAuthenticated = true;
       }
       
+      // Mark "just logged in" so UI can show non-blocking prompts.
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final uid = prefs.getString('user') ?? _user?.uid;
+        if (uid != null && uid.isNotEmpty) {
+          await prefs.setString('justLoggedInUid', uid);
+        }
+      } catch (_) {}
+
       notifyListeners();
     } catch (e) {
       rethrow;
@@ -130,6 +148,15 @@ class AuthProvider with ChangeNotifier {
         _isAuthenticated = true;
       }
       
+      // Mark "just logged in" so UI can show non-blocking prompts.
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final uid = prefs.getString('user') ?? _user?.uid;
+        if (uid != null && uid.isNotEmpty) {
+          await prefs.setString('justLoggedInUid', uid);
+        }
+      } catch (_) {}
+
       notifyListeners();
     } catch (e) {
       rethrow;

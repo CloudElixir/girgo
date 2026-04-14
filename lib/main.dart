@@ -271,6 +271,91 @@ class _MainScreenState extends State<MainScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _maybeShowAddPhonePrompt();
+    });
+  }
+
+  Future<void> _maybeShowAddPhonePrompt() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final justLoggedInUid = prefs.getString('justLoggedInUid');
+      if (justLoggedInUid == null || justLoggedInUid.isEmpty) return;
+
+      // Clear the marker immediately so the prompt is shown at most once per login.
+      await prefs.remove('justLoggedInUid');
+
+      final skipKey = 'skipAddPhonePrompt_$justLoggedInUid';
+      if (prefs.getBool(skipKey) == true) return;
+
+      final localPhone = (prefs.getString('userMobile') ?? '').trim();
+      final hasPhone = localPhone.isNotEmpty;
+      if (hasPhone) return;
+
+      if (!mounted) return;
+      // Non-blocking, skippable prompt after login.
+      showModalBottomSheet<void>(
+        context: context,
+        showDragHandle: true,
+        isScrollControlled: false,
+        builder: (context) {
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Add your phone number to unlock full features',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'You can skip for now and continue using the app.',
+                    style: TextStyle(color: Colors.black54),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () async {
+                            try {
+                              final prefs = await SharedPreferences.getInstance();
+                              await prefs.setBool(skipKey, true);
+                            } catch (_) {}
+                            if (context.mounted) Navigator.of(context).pop();
+                          },
+                          child: const Text('Skip'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            Navigator.of(context).pushNamed('/edit-profile');
+                          },
+                          child: const Text('Add phone'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    } catch (e) {
+      debugPrint('Add phone prompt check failed: $e');
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Consumer<TabControllerProvider>(
       builder: (context, tabController, child) {

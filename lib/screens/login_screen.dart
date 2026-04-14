@@ -61,13 +61,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final authProvider = Provider.of<app.AuthProvider>(context, listen: false);
+      final phoneRaw = _mobileController.text.trim();
       
       // Sign up with Firebase Auth (this will create user in Firestore)
       await authProvider.signUpWithEmail(
         email: _emailController.text,
         password: _passwordController.text,
         name: _nameController.text,
-        phone: _mobileController.text,
+        phone: phoneRaw.isEmpty ? null : phoneRaw,
       );
       
       _completeAuthSuccess();
@@ -81,6 +82,9 @@ class _LoginScreenState extends State<LoginScreen> {
           errorMessage = 'Password is too weak. Please use a stronger password.';
         } else if (e.toString().contains('invalid-email')) {
           errorMessage = 'Invalid email address. Please check your email.';
+        } else if (e.toString().contains('operation-not-allowed')) {
+          errorMessage =
+              'Email/password sign-in is not enabled right now. Please contact support or try another sign-in method.';
         }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(errorMessage)),
@@ -116,6 +120,9 @@ class _LoginScreenState extends State<LoginScreen> {
           errorMessage = 'Invalid email address. Please check your email.';
         } else if (e.toString().contains('user-disabled')) {
           errorMessage = 'This account has been disabled. Please contact support.';
+        } else if (e.toString().contains('operation-not-allowed')) {
+          errorMessage =
+              'Email/password sign-in is not enabled right now. Please try another sign-in method.';
         }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(errorMessage)),
@@ -168,6 +175,9 @@ class _LoginScreenState extends State<LoginScreen> {
         String errorMessage = 'Apple sign in failed: $e';
         if (e.toString().contains('only available on iOS')) {
           errorMessage = 'Apple Sign-In is only available on iOS and macOS. Please use Google Sign-In or Email.';
+        } else if (e.toString().contains('operation-not-allowed')) {
+          errorMessage =
+              'Apple Sign-In is not enabled right now. Please try another sign-in method or contact support.';
         }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(errorMessage)),
@@ -444,7 +454,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           keyboardType: TextInputType.phone,
                           textAlign: TextAlign.left,
                           decoration: InputDecoration(
-                            labelText: 'Mobile Number',
+                            labelText: 'Mobile Number (Optional)',
                             prefixIcon: const Icon(Icons.phone),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(AppBorderRadius.medium),
@@ -460,13 +470,11 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                           validator: (value) {
-                              if (_isSignUp) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter your mobile number';
-                            }
-                            if (value.length < 10) {
+                            if (!_isSignUp) return null;
+                            final v = (value ?? '').trim();
+                            if (v.isEmpty) return null;
+                            if (v.length < 10) {
                               return 'Please enter a valid mobile number';
-                                }
                             }
                             return null;
                           },
