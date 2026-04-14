@@ -355,16 +355,44 @@ class AuthService {
         throw Exception('Apple Sign-In is only available on iOS and macOS.');
       }
 
+      final isAvailable = await SignInWithApple.isAvailable();
+      if (!isAvailable) {
+        throw FirebaseAuthException(
+          code: 'not-available',
+          message:
+              'Apple Sign-In is not available on this device. Make sure you are testing on a real iPhone/iPad with iOS 13+ and that the app has the "Sign In with Apple" capability enabled.',
+        );
+      }
+
       final rawNonce = _generateNonce();
       final nonce = _sha256OfString(rawNonce);
 
-      final appleCredential = await SignInWithApple.getAppleIDCredential(
-        scopes: [
-          AppleIDAuthorizationScopes.email,
-          AppleIDAuthorizationScopes.fullName,
-        ],
-        nonce: nonce,
-      );
+      final AuthorizationCredentialAppleID appleCredential;
+      try {
+        appleCredential = await SignInWithApple.getAppleIDCredential(
+          scopes: [
+            AppleIDAuthorizationScopes.email,
+            AppleIDAuthorizationScopes.fullName,
+          ],
+          nonce: nonce,
+        );
+      } on SignInWithAppleAuthorizationException catch (e) {
+        // Normalize to a FirebaseAuthException so UI can map reliably.
+        // Common cases:
+        // - canceled: user tapped "Cancel"
+        // - failed/unknown: entitlement or Apple Developer configuration issues
+        if (e.code == AuthorizationErrorCode.canceled) {
+          throw FirebaseAuthException(
+            code: 'canceled',
+            message: 'Apple sign-in was canceled.',
+          );
+        }
+        throw FirebaseAuthException(
+          code: 'apple-signin-failed',
+          message:
+              'Apple Sign-In could not start (${e.code}). Ensure your App ID has "Sign in with Apple" enabled, the app bundle id matches Firebase (com.anamaya.girgo), and rebuild the iOS app.',
+        );
+      }
 
       if (appleCredential.identityToken == null ||
           appleCredential.identityToken!.isEmpty) {
@@ -380,7 +408,8 @@ class AuthService {
         rawNonce: rawNonce,
       );
 
-      final userCredential = await FirebaseService.auth!.signInWithCredential(oauthCredential);
+      final userCredential =
+          await FirebaseService.auth!.signInWithCredential(oauthCredential);
 
       if (userCredential.user != null) {
         final user = userCredential.user!;
@@ -426,10 +455,23 @@ class AuthService {
       return userCredential;
     } on FirebaseAuthException catch (e) {
       print('Apple Sign-In Error: $e');
+      if (e.code == 'operation-not-allowed') {
+        // This is almost always Firebase Console configuration.
+        throw FirebaseAuthException(
+          code: e.code,
+          message:
+              'Apple Sign-In is disabled for this Firebase project. In Firebase Console → Authentication → Sign-in method → Apple, enable it and fill Service ID, Team ID, Key ID, and upload the .p8 private key.',
+        );
+      }
       rethrow;
     } catch (e) {
       print('Apple Sign-In Error: $e');
-      rethrow;
+      // Keep original error but provide a more actionable default.
+      throw FirebaseAuthException(
+        code: 'apple-signin-unknown',
+        message:
+            'Apple Sign-In failed. Confirm Apple Developer Service ID domain/return URL are set to girgo-prod.firebaseapp.com and https://girgo-prod.firebaseapp.com/__/auth/handler, then rebuild and try again.',
+      );
     }
   }
 }

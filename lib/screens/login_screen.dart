@@ -170,14 +170,46 @@ class _LoginScreenState extends State<LoginScreen> {
       final authProvider = Provider.of<app.AuthProvider>(context, listen: false);
       await authProvider.signInWithApple();
       _completeAuthSuccess();
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      String errorMessage = 'Apple sign in failed. Please try again.';
+      switch (e.code) {
+        case 'canceled':
+          // User dismissed the sheet – no need to show a scary error.
+          return;
+        case 'operation-not-allowed':
+          errorMessage =
+              'Apple Sign-In is currently unavailable (not enabled on server). Please try Google or Email sign-in.';
+          break;
+        case 'not-available':
+          errorMessage = e.message ??
+              'Apple Sign-In is not available on this device. Please try Google or Email sign-in.';
+          break;
+        case 'invalid-credential':
+          errorMessage = e.message ??
+              'Apple Sign-In could not verify your credentials. Please try again.';
+          break;
+        case 'account-exists-with-different-credential':
+          errorMessage =
+              'An account already exists with the same email. Please sign in using the method you used previously.';
+          break;
+        case 'network-request-failed':
+          errorMessage = 'Network error. Check your connection and try again.';
+          break;
+        default:
+          if (e.message != null && e.message!.trim().isNotEmpty) {
+            errorMessage = e.message!;
+          }
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
     } catch (e) {
       if (mounted) {
-        String errorMessage = 'Apple sign in failed: $e';
+        String errorMessage = 'Apple sign in failed. Please try again.';
         if (e.toString().contains('only available on iOS')) {
-          errorMessage = 'Apple Sign-In is only available on iOS and macOS. Please use Google Sign-In or Email.';
-        } else if (e.toString().contains('operation-not-allowed')) {
           errorMessage =
-              'Apple Sign-In is not enabled right now. Please try another sign-in method or contact support.';
+              'Apple Sign-In is only available on iOS and macOS. Please use Google Sign-In or Email.';
         }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(errorMessage)),
