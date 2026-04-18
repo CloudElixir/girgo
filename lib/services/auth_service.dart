@@ -395,7 +395,7 @@ class AuthService {
         print('📧 Email: ${appleCredential.email ?? "(not provided)"}');
         print('👤 Given Name: ${appleCredential.givenName ?? "(not provided)"}');
         print('👤 Family Name: ${appleCredential.familyName ?? "(not provided)"}');
-        print('🆔 User ID: ${appleCredential.userID}');
+        print('🆔 User ID: ${appleCredential.userIdentifier}');
       } on SignInWithAppleAuthorizationException catch (e) {
         print('❌ Apple Sign-In authorization error: ${e.code} - ${e.message}');
         // Normalize to a FirebaseAuthException so UI can map reliably.
