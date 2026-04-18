@@ -346,17 +346,24 @@ class AuthService {
   /// Sign in with Apple (iOS/macOS only)
   Future<UserCredential?> signInWithApple() async {
     try {
+      print('🍎 Starting Apple Sign-In flow...');
+      
       if (FirebaseService.auth == null) {
+        print('❌ Firebase not initialized');
         throw Exception('Apple Sign-In requires Firebase support.');
       }
 
       // Check platform - Apple Sign-In only works on iOS and macOS
       if (!io.Platform.isIOS && !io.Platform.isMacOS) {
+        print('❌ Platform not supported: ${io.Platform.operatingSystem}');
         throw Exception('Apple Sign-In is only available on iOS and macOS.');
       }
 
+      print('✅ Platform check passed: ${io.Platform.operatingSystem}');
+
       final isAvailable = await SignInWithApple.isAvailable();
       if (!isAvailable) {
+        print('❌ Apple Sign-In not available on this device');
         throw FirebaseAuthException(
           code: 'not-available',
           message:
@@ -364,11 +371,19 @@ class AuthService {
         );
       }
 
+      print('✅ Apple Sign-In is available');
+
+      // Generate secure random nonce
       final rawNonce = _generateNonce();
+      print('🔐 Generated raw nonce: ${rawNonce.substring(0, 8)}...');
+      
+      // SHA256 hash the nonce
       final nonce = _sha256OfString(rawNonce);
+      print('🔐 Hashed nonce: ${nonce.substring(0, 16)}...');
 
       final AuthorizationCredentialAppleID appleCredential;
       try {
+        print('📱 Requesting Apple ID credential...');
         appleCredential = await SignInWithApple.getAppleIDCredential(
           scopes: [
             AppleIDAuthorizationScopes.email,
@@ -376,12 +391,19 @@ class AuthService {
           ],
           nonce: nonce,
         );
+        print('✅ Apple credential received');
+        print('📧 Email: ${appleCredential.email ?? "(not provided)"}');
+        print('👤 Given Name: ${appleCredential.givenName ?? "(not provided)"}');
+        print('👤 Family Name: ${appleCredential.familyName ?? "(not provided)"}');
+        print('🆔 User ID: ${appleCredential.userID}');
       } on SignInWithAppleAuthorizationException catch (e) {
+        print('❌ Apple Sign-In authorization error: ${e.code} - ${e.message}');
         // Normalize to a FirebaseAuthException so UI can map reliably.
         // Common cases:
         // - canceled: user tapped "Cancel"
         // - failed/unknown: entitlement or Apple Developer configuration issues
         if (e.code == AuthorizationErrorCode.canceled) {
+          print('ℹ️ User canceled Apple Sign-In');
           throw FirebaseAuthException(
             code: 'canceled',
             message: 'Apple sign-in was canceled.',
@@ -396,6 +418,7 @@ class AuthService {
 
       if (appleCredential.identityToken == null ||
           appleCredential.identityToken!.isEmpty) {
+        print('❌ No identity token received from Apple');
         throw FirebaseAuthException(
           code: 'invalid-credential',
           message:
@@ -403,13 +426,23 @@ class AuthService {
         );
       }
 
+      print('✅ Identity token received (length: ${appleCredential.identityToken!.length})');
+
+      // Create Firebase OAuth credential with idToken and rawNonce
+      print('🔑 Creating Firebase OAuth credential...');
       final oauthCredential = OAuthProvider('apple.com').credential(
         idToken: appleCredential.identityToken,
         rawNonce: rawNonce,
       );
+      print('✅ Firebase OAuth credential created');
 
+      // Sign in with Firebase
+      print('🔐 Signing in with Firebase...');
       final userCredential =
           await FirebaseService.auth!.signInWithCredential(oauthCredential);
+      print('✅ Firebase sign-in successful');
+      print('👤 User UID: ${userCredential.user?.uid}');
+      print('📧 User Email: ${userCredential.user?.email}');
 
       if (userCredential.user != null) {
         final user = userCredential.user!;
@@ -418,15 +451,19 @@ class AuthService {
         String displayName = '';
         if (appleCredential.givenName != null || appleCredential.familyName != null) {
           displayName = '${appleCredential.givenName ?? ''} ${appleCredential.familyName ?? ''}'.trim();
+          print('👤 Display name from Apple: $displayName');
         }
 
         // Update display name if we got it from Apple
         if (displayName.isNotEmpty && user.displayName != displayName) {
+          print('📝 Updating display name in Firebase...');
           await user.updateDisplayName(displayName);
           await user.reload();
+          print('✅ Display name updated');
         }
 
         // Store in SharedPreferences
+        print('💾 Storing user data in SharedPreferences...');
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('user', user.uid);
         await prefs.setString('userEmail', user.email ?? '');
@@ -436,9 +473,11 @@ class AuthService {
         if (user.photoURL != null) {
           await prefs.setString('userPhoto', user.photoURL!);
         }
+        print('✅ SharedPreferences updated');
 
         // Create or update user in Firestore
         try {
+          print('📝 Creating/updating user in Firestore...');
           await FirestoreService.createOrUpdateUser(
             uid: user.uid,
             email: user.email ?? '',
@@ -452,9 +491,10 @@ class AuthService {
         }
       }
 
+      print('🎉 Apple Sign-In completed successfully');
       return userCredential;
     } on FirebaseAuthException catch (e) {
-      print('Apple Sign-In Error: $e');
+      print('❌ Firebase Auth Error during Apple Sign-In: ${e.code} - ${e.message}');
       if (e.code == 'operation-not-allowed') {
         // This is almost always Firebase Console configuration.
         throw FirebaseAuthException(
@@ -463,9 +503,16 @@ class AuthService {
               'Apple Sign-In is disabled for this Firebase project. In Firebase Console → Authentication → Sign-in method → Apple, enable it and fill Service ID, Team ID, Key ID, and upload the .p8 private key.',
         );
       }
+      if (e.code == 'invalid-credential') {
+        throw FirebaseAuthException(
+          code: e.code,
+          message:
+              'Invalid credential. Ensure the Apple Sign-In configuration in Firebase Console matches your Apple Developer account settings.',
+        );
+      }
       rethrow;
     } catch (e) {
-      print('Apple Sign-In Error: $e');
+      print('❌ Apple Sign-In Error: $e');
       // Keep original error but provide a more actionable default.
       throw FirebaseAuthException(
         code: 'apple-signin-unknown',
