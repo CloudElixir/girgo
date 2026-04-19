@@ -373,14 +373,6 @@ class AuthService {
 
       print('✅ Apple Sign-In is available');
 
-      // Generate secure random nonce
-      final rawNonce = _generateNonce();
-      print('🔐 Generated raw nonce: ${rawNonce.substring(0, 8)}...');
-      
-      // SHA256 hash the nonce
-      final nonce = _sha256OfString(rawNonce);
-      print('🔐 Hashed nonce: ${nonce.substring(0, 16)}...');
-
       final AuthorizationCredentialAppleID appleCredential;
       try {
         print('📱 Requesting Apple ID credential...');
@@ -389,7 +381,6 @@ class AuthService {
             AppleIDAuthorizationScopes.email,
             AppleIDAuthorizationScopes.fullName,
           ],
-          nonce: nonce,
         );
         print('✅ Apple credential received');
         print('📧 Email: ${appleCredential.email ?? "(not provided)"}');
@@ -428,11 +419,23 @@ class AuthService {
 
       print('✅ Identity token received (length: ${appleCredential.identityToken!.length})');
 
-      // Create Firebase OAuth credential with idToken and rawNonce
+      if (appleCredential.authorizationCode == null ||
+          appleCredential.authorizationCode!.isEmpty) {
+        print('❌ No authorization code received from Apple');
+        throw FirebaseAuthException(
+          code: 'invalid-credential',
+          message:
+              'Apple did not return an authorization code. Ensure Sign In with Apple is properly configured.',
+        );
+      }
+
+      print('✅ Authorization code received (length: ${appleCredential.authorizationCode!.length})');
+
+      // Create Firebase OAuth credential with idToken and authorizationCode
       print('🔑 Creating Firebase OAuth credential...');
       final oauthCredential = OAuthProvider('apple.com').credential(
         idToken: appleCredential.identityToken,
-        rawNonce: rawNonce,
+        accessToken: appleCredential.authorizationCode,
       );
       print('✅ Firebase OAuth credential created');
 
