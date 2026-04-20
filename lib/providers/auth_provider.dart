@@ -36,6 +36,9 @@ class AuthProvider with ChangeNotifier {
     try {
       final userCredential = await _authService.signInWithGoogle();
       _user = userCredential?.user;
+      await _user?.reload();
+      _user = FirebaseAuth.instance.currentUser;
+      print('AuthProvider Google currentUser: ${FirebaseAuth.instance.currentUser}');
       
       // For Linux desktop, check SharedPreferences after login attempt
       if (_user == null) {
@@ -65,6 +68,9 @@ class AuthProvider with ChangeNotifier {
     try {
       final userCredential = await _authService.signInWithApple();
       _user = userCredential?.user;
+      await _user?.reload();
+      _user = FirebaseAuth.instance.currentUser;
+      print('AuthProvider Apple currentUser: ${FirebaseAuth.instance.currentUser}');
       
       // For platforms that support Apple Sign-In
       if (_user == null) {
@@ -112,6 +118,9 @@ class AuthProvider with ChangeNotifier {
         phone: phone,
       );
       _user = userCredential?.user;
+      await _user?.reload();
+      _user = FirebaseAuth.instance.currentUser;
+      print('AuthProvider SignUp currentUser: ${FirebaseAuth.instance.currentUser}');
       
       // For Linux desktop, check SharedPreferences after signup attempt
       if (_user == null) {
@@ -138,6 +147,9 @@ class AuthProvider with ChangeNotifier {
         password: password,
       );
       _user = userCredential?.user;
+      await _user?.reload();
+      _user = FirebaseAuth.instance.currentUser;
+      print('AuthProvider Email currentUser: ${FirebaseAuth.instance.currentUser}');
       
       // For Linux desktop, check SharedPreferences after signin attempt
       if (_user == null) {

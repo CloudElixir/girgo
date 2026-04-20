@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -9,10 +8,8 @@ import '../constants/theme.dart';
 import '../providers/subscription_provider.dart';
 import '../services/subscription_service.dart';
 import '../services/firestore_service.dart';
-import '../services/firebase_service.dart';
 import '../constants/products.dart';
 import 'package:intl/intl.dart';
-import '../utils/require_auth.dart';
 import '../widgets/cart_icon_button.dart';
 import '../utils/data_url_image_decoder.dart';
 
@@ -27,6 +24,7 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
   @override
   void initState() {
     super.initState();
+    print('Subscriptions init currentUser: ${FirebaseAuth.instance.currentUser}');
     // Sync local subscriptions to Firestore on first load
     _syncSubscriptionsToFirestore();
   }
@@ -211,101 +209,93 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
           CartIconButton(),
         ],
       ),
-      body: FutureBuilder<String?>(
-        future: _getUserId(),
-        builder: (context, userIdSnapshot) {
-          if (!userIdSnapshot.hasData || userIdSnapshot.data == null) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.lock_outline, size: 56, color: AppColors.textLight),
-                    const SizedBox(height: AppSpacing.md),
-                    Text(
-                      'Sign in to view and manage your subscriptions',
-                      style: AppTextStyles.heading3,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    FilledButton(
-                      onPressed: () => ensureSignedIn(context),
-                      child: const Text('Sign in'),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
-          
-          final userId = userIdSnapshot.data!;
-          
-          return StreamBuilder<List<Map<String, dynamic>>>(
-            stream: FirestoreService.getUserSubscriptions(userId),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
-          
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          
-          final subscriptionsData = snapshot.data!;
-          
-          // Convert Firestore data to Subscription objects
-          final subscriptions = subscriptionsData.map((data) {
-            final createdAt = data['createdAt'] as Timestamp?;
-            final nextDelivery = data['nextDeliveryDate'] as Timestamp?;
-            
-            return Subscription(
-              id: data['id'] as String? ?? '',
-              productId: data['productId'] as String? ?? '',
-              productName: data['productName'] as String? ?? '',
-              productImage: data['productImage'] as String? ?? '',
-              quantity: (data['quantity'] as num?)?.toInt() ?? 1,
-              price: (data['price'] as num?)?.toDouble() ?? 0.0,
-              type: data['type'] as String? ?? 'Daily',
-              status: data['status'] as String? ?? 'Pending',
-              nextDelivery: nextDelivery != null
-                  ? DateFormat('dd/MM/yyyy').format(nextDelivery.toDate())
-                  : DateFormat('dd/MM/yyyy').format(DateTime.now().add(const Duration(days: 1))),
-              createdAt: createdAt?.toDate() ?? DateTime.now(),
-            );
-          }).toList();
-          
-          if (subscriptions.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.repeat_outlined,
-                    size: 80,
-                    color: AppColors.textLight,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  Text('No active subscriptions', style: AppTextStyles.heading3),
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(
-                    'Subscribe to products for regular deliveries and save more!',
-                    style: AppTextStyles.bodySmall,
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            );
-          }
-          
-          return RefreshIndicator(
-            onRefresh: _loadSubscriptions,
-            child: ListView.builder(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              itemCount: subscriptions.length,
-              itemBuilder: (context, index) {
-                final subscription = subscriptions[index];
-                      return Card(
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return StreamBuilder<User?>(
+              stream: FirebaseAuth.instance.authStateChanges(),
+              builder: (context, authSnapshot) {
+                print('Subscriptions auth state: ${FirebaseAuth.instance.currentUser}');
+                if (authSnapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final user = authSnapshot.data ?? FirebaseAuth.instance.currentUser;
+                if (user == null) {
+                  return _buildLoggedOutState();
+                }
+
+                return StreamBuilder<List<Map<String, dynamic>>>(
+                  stream: FirestoreService.getUserSubscriptions(user.uid),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasError) {
+                      return Center(child: Text('Error: ${snapshot.error}'));
+                    }
+
+                    if (!snapshot.hasData) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    final subscriptionsData = snapshot.data!;
+
+                    // Convert Firestore data to Subscription objects
+                    final subscriptions = subscriptionsData.map((data) {
+                      final createdAt = data['createdAt'] as Timestamp?;
+                      final nextDelivery = data['nextDeliveryDate'] as Timestamp?;
+
+                      return Subscription(
+                        id: data['id'] as String? ?? '',
+                        productId: data['productId'] as String? ?? '',
+                        productName: data['productName'] as String? ?? '',
+                        productImage: data['productImage'] as String? ?? '',
+                        quantity: (data['quantity'] as num?)?.toInt() ?? 1,
+                        price: (data['price'] as num?)?.toDouble() ?? 0.0,
+                        type: data['type'] as String? ?? 'Daily',
+                        status: data['status'] as String? ?? 'Pending',
+                        nextDelivery: nextDelivery != null
+                            ? DateFormat('dd/MM/yyyy').format(nextDelivery.toDate())
+                            : DateFormat('dd/MM/yyyy')
+                                .format(DateTime.now().add(const Duration(days: 1))),
+                        createdAt: createdAt?.toDate() ?? DateTime.now(),
+                      );
+                    }).toList();
+
+                    if (subscriptions.isEmpty) {
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.repeat_outlined,
+                                size: 80,
+                                color: AppColors.textLight,
+                              ),
+                              const SizedBox(height: AppSpacing.md),
+                              Text('No active subscriptions', style: AppTextStyles.heading3),
+                              const SizedBox(height: AppSpacing.sm),
+                              Text(
+                                'Subscribe to products for regular deliveries and save more!',
+                                style: AppTextStyles.bodySmall,
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+
+                    final horizontalPadding =
+                        constraints.maxWidth >= 900 ? AppSpacing.xl : AppSpacing.md;
+                    return RefreshIndicator(
+                      onRefresh: _loadSubscriptions,
+                      child: ListView.builder(
+                        padding: EdgeInsets.all(horizontalPadding),
+                        itemCount: subscriptions.length,
+                        itemBuilder: (context, index) {
+                          final subscription = subscriptions[index];
+                          return Card(
                         margin: const EdgeInsets.only(bottom: AppSpacing.md),
                         child: Padding(
                           padding: const EdgeInsets.all(AppSpacing.md),
@@ -478,56 +468,47 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
                           ),
                         ),
                       );
-                    },
-                  ),
+                        },
+                      ),
+                    );
+                  },
                 );
+              },
+            );
           },
-        );
-        },
+        ),
       ),
     );
   }
 
-  Future<String?> _getUserId() async {
-    final prefs = await SharedPreferences.getInstance();
-    
-    // Try Firebase Auth UID first (most reliable)
-    final firebaseUser =
-        Firebase.apps.isEmpty ? null : FirebaseAuth.instance.currentUser;
-    if (firebaseUser != null) {
-      final uid = firebaseUser.uid;
-      final email = firebaseUser.email;
-      print('🔍 Firebase Auth - UID: $uid, Email: $email');
-      
-      // Try UID first
-      return uid;
-    }
-    
-    // Fallback to SharedPreferences
-    final userId = prefs.getString('user');
-    final userEmail = prefs.getString('userEmail');
-    
-    print('🔍 SharedPreferences - userId: $userId, userEmail: $userEmail');
-    
-    // If userId looks like an email, use it
-    if (userId != null && userId.isNotEmpty) {
-      if (userId.contains('@')) {
-        print('✅ Using email as userId: $userId');
-        return userId;
-      } else {
-        print('✅ Using UID as userId: $userId');
-        return userId;
-      }
-    }
-    
-    // Last resort: use email
-    if (userEmail != null && userEmail.isNotEmpty) {
-      print('✅ Using userEmail: $userEmail');
-      return userEmail;
-    }
-    
-    print('⚠️ No user ID found');
-    return null;
+  Widget _buildLoggedOutState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.lock_outline, size: 56, color: AppColors.textLight),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                'Sign in to view and manage your subscriptions',
+                style: AppTextStyles.heading3,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              FilledButton(
+                onPressed: () {
+                  Navigator.of(context).pushNamed('/login');
+                },
+                child: const Text('Sign in'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
 }

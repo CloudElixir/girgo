@@ -570,7 +570,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   width: double.infinity,
                                   child: ElevatedButton(
                                     onPressed: authProvider.isAuthenticated
-                                        ? null
+                                        ? _completeAuthSuccess
                                         : (_isSignUp ? _handleSignUp : _handleSignIn),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: const Color(0xFF0B510E), // Dark green
