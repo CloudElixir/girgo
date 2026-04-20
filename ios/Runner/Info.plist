@@ -21,8 +21,8 @@
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleVersion</key>
-	<string>26</string>
-	<!-- Build number synced with pubspec.yaml (1.0.0+26) - Updated for App Store submission -->
+	<string>27</string>
+	<!-- Build number synced with pubspec.yaml (1.0.0+27) - Updated for App Store submission -->
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIDeviceFamily</key>
