@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../constants/theme.dart';
 import '../providers/auth_provider.dart' as app;
 
@@ -629,23 +630,31 @@ class _LoginScreenState extends State<LoginScreen> {
                               ],
                             ),
                             SizedBox(height: _getResponsiveSpacing(context, AppSpacing.lg)),
-                            // Social sign-in options (G and A buttons)
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                            // Social sign-in options (G button and official Apple Sign-In button)
+                            Column(
                               children: [
-                                _buildSocialCircleButton(
-                                  label: 'G',
-                                  onTap: _handleGoogleSignIn,
+                                // Google Sign-In button (keep existing custom button)
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    _buildSocialCircleButton(
+                                      label: 'G',
+                                      onTap: _handleGoogleSignIn,
+                                    ),
+                                  ],
                                 ),
                                 SizedBox(
-                                  width: _getResponsiveSpacing(
+                                  height: _getResponsiveSpacing(
                                     context,
-                                    AppSpacing.lg,
+                                    AppSpacing.md,
                                   ),
                                 ),
-                                _buildSocialCircleButton(
-                                  label: 'A',
-                                  onTap: _handleAppleSignIn,
+                                // Official Apple Sign-In button
+                                SignInWithAppleButton(
+                                  onPressed: _handleAppleSignIn,
+                                  text: "Sign in with Apple",
+                                  height: 52,
+                                  style: SignInWithAppleButtonStyle.black,
                                 ),
                               ],
                             ),
